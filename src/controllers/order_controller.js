@@ -145,6 +145,23 @@ export class OrderController {
   }
 
   /**
+   * Get latest active order for passenger
+   * GET /api/v1/orders/active
+   */
+  static getActiveOrder(req, res) {
+    const activeOrder = db.orders.find(
+      (o) => o.status !== 'completed' && o.status !== 'cancelled'
+    );
+    if (!activeOrder) {
+      return res.json({ success: true, order: null });
+    }
+    return res.json({
+      success: true,
+      order: activeOrder,
+    });
+  }
+
+  /**
    * Get single order details
    * GET /api/v1/orders/:id
    */
