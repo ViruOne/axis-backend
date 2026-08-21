@@ -36,7 +36,11 @@ export class OrderController {
     if (promoCode && promoCode.toUpperCase() === 'VIP2026') {
       discount = 10000;
     }
-    const finalPrice = Math.max(tariff.basePrice, estimate.finalPrice - discount);
+    
+    const clientPrice = req.body.finalPrice || req.body.basePrice || req.body.estimatedPrice;
+    const finalPrice = clientPrice ? Number(clientPrice) : Math.max(tariff.basePrice, estimate.finalPrice - discount);
+    const distanceKm = req.body.distanceKm ? Number(req.body.distanceKm) : estimate.distanceKm;
+    const durationMinutes = req.body.durationMinutes ? Number(req.body.durationMinutes) : estimate.durationMinutes;
 
     const order = {
       id: req.body.id || `ord-${uuidv4().substring(0, 8)}`,
@@ -44,16 +48,17 @@ export class OrderController {
       pickup,
       dropoff,
       tariffId,
-      tariffName: tariff.name,
+      tariffName: req.body.tariffName || tariff.name,
       paymentMethod,
       comment,
       promoCode,
       isChildSeat,
       isPetFriendly,
-      estimatedPrice: estimate.finalPrice,
+      estimatedPrice: finalPrice,
+      basePrice: finalPrice,
       finalPrice,
-      distanceKm: estimate.distanceKm,
-      durationMinutes: estimate.durationMinutes,
+      distanceKm,
+      durationMinutes,
       polyline,
       status: 'searching_driver', // searching_driver | driver_accepted | driver_arrived | in_trip | completed | cancelled
       driver: null,
@@ -175,6 +180,12 @@ export class OrderController {
     } else if (nextStep === 'completed') {
       order.status = 'completed';
       order.completedAt = new Date().toISOString();
+      if (req.body.finalPrice) {
+        order.finalPrice = Number(req.body.finalPrice);
+      }
+      if (req.body.distanceKm) {
+        order.distanceKm = Number(req.body.distanceKm);
+      }
 
       // Deduct or process transaction
       if (order.paymentMethod === 'wallet') {
@@ -194,6 +205,7 @@ export class OrderController {
       global.io.emit('order:status_updated', {
         orderId: order.id,
         status: order.status,
+        finalPrice: order.finalPrice,
         order,
       });
     }
