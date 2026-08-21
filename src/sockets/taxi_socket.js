@@ -58,42 +58,57 @@ export function setupTaxiSockets(io) {
     socket.on('driver:location_update', (data) => {
       const { driverId, lat, lng, heading, speed } = data;
       let driver = db.drivers.find((d) => d.id === driverId);
+      const liveSpeed = typeof speed === 'number' ? speed : 0.0;
+      const liveHeading = typeof heading === 'number' ? heading : 0.0;
+
       if (driver) {
         driver.isOnline = true;
         driver.currentLat = lat;
         driver.currentLng = lng;
-        driver.heading = heading || driver.heading;
-        driver.speed = speed || driver.speed;
+        driver.heading = liveHeading;
+        driver.speed = liveSpeed;
       } else {
         driver = {
-          id: driverId,
-          name: data.name || 'Haydovchi',
-          phone: data.phone || '',
+          id: driverId || 'drv-001',
+          name: data.name || data.driverName || 'Javohir Toshmatov',
+          phone: data.phone || '+998 90 123 45 67',
           carModel: data.carModel || 'Chevrolet Cobalt',
           carColor: data.carColor || 'Oq',
           licensePlate: data.licensePlate || '40 A 777 AA',
           rating: 5.0,
-          totalTrips: 0,
-          todayTrips: 0,
-          todayEarnings: 0,
+          totalTrips: 100,
+          todayTrips: 5,
+          todayEarnings: 150000,
           balance: 100000,
           isOnline: true,
           isBlocked: false,
           currentLat: lat,
           currentLng: lng,
-          heading: heading || 0.0,
-          speed: speed || 0.0,
+          heading: liveHeading,
+          speed: liveSpeed,
         };
         db.drivers.unshift(driver);
       }
 
-      // Broadcast real-time location to passenger apps
+      // Sync active orders
+      for (const order of db.orders) {
+        if (order.driver && (order.driver.id === driverId || order.driver.driverId === driverId || !order.driver.id)) {
+          order.driver.currentLat = lat;
+          order.driver.currentLng = lng;
+          order.driver.lat = lat;
+          order.driver.lng = lng;
+          order.driver.heading = liveHeading;
+          order.driver.speed = liveSpeed;
+        }
+      }
+
+      // Broadcast real-time location and speed to all passenger apps
       io.emit('driver:location_changed', {
-        driverId,
+        driverId: driver.id,
         lat,
         lng,
-        heading: driver.heading,
-        speed: driver.speed,
+        heading: liveHeading,
+        speed: liveSpeed,
       });
 
       io.emit('drivers:nearby_stream', {
