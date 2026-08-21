@@ -59,6 +59,7 @@ apiRouter.get('/drivers/:id/stats', DriverController.getDriverStats);
 // Orders Routes
 apiRouter.post('/orders/create', OrderController.createOrder);
 apiRouter.get('/orders/pending', OrderController.getPendingOrders);
+apiRouter.get('/orders/:id', OrderController.getOrderById);
 apiRouter.post('/orders/:id/accept', OrderController.acceptOrder);
 apiRouter.post('/orders/:id/advance-step', OrderController.advanceTripStep);
 apiRouter.post('/orders/:id/cancel', OrderController.cancelOrder);

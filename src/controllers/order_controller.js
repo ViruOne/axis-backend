@@ -39,7 +39,7 @@ export class OrderController {
     const finalPrice = Math.max(tariff.basePrice, estimate.finalPrice - discount);
 
     const order = {
-      id: `ord-${uuidv4().substring(0, 8)}`,
+      id: req.body.id || `ord-${uuidv4().substring(0, 8)}`,
       userId,
       pickup,
       dropoff,
@@ -48,10 +48,12 @@ export class OrderController {
       paymentMethod,
       comment,
       promoCode,
-      discount,
-      distanceKm: estimate.distanceKm,
-      estimatedMinutes: estimate.estimatedMinutes,
+      isChildSeat,
+      isPetFriendly,
+      estimatedPrice: estimate.finalPrice,
       finalPrice,
+      distanceKm: estimate.distanceKm,
+      durationMinutes: estimate.durationMinutes,
       polyline,
       status: 'searching_driver', // searching_driver | driver_accepted | driver_arrived | in_trip | completed | cancelled
       driver: null,
@@ -64,7 +66,7 @@ export class OrderController {
     if (global.io) {
       global.io.emit('order:incoming', {
         order,
-        timerSeconds: 15,
+        timerSeconds: 30,
       });
     }
 
@@ -81,36 +83,74 @@ export class OrderController {
    */
   static acceptOrder(req, res) {
     const orderId = req.params.id;
-    const { driverId = 'drv-001' } = req.body;
+    const {
+      driverId = 'drv-101',
+      driverName = 'Javohir Toshmatov',
+      phone = '+998 90 123 45 67',
+      carModel = 'Chevrolet Cobalt',
+      carColor = 'Oq',
+      licensePlate = '40 A 777 AA',
+      rating = 5.0,
+      lat = 40.3842,
+      lng = 71.7843,
+      heading = 0.0,
+    } = req.body;
 
-    const order = db.orders.find((o) => o.id === orderId) || db.orders[0];
-    const driver = db.drivers.find((d) => d.id === driverId) || db.drivers[0];
+    let order = db.orders.find((o) => o.id === orderId);
+    if (!order && db.orders.length > 0) {
+      order = db.orders[0];
+    }
 
     if (!order) {
       return res.status(404).json({ success: false, message: 'Buyurtma topilmadi' });
     }
 
-    order.status = 'driver_accepted';
-    order.driver = {
-      id: driver.id,
-      name: driver.name,
-      phone: driver.phone,
-      carModel: driver.carModel,
-      carColor: driver.carColor,
-      licensePlate: driver.licensePlate,
-      rating: driver.rating,
-      currentLat: driver.currentLat,
-      currentLng: driver.currentLng,
+    const assignedDriver = {
+      id: driverId,
+      name: driverName,
+      phone,
+      carModel,
+      carColor,
+      licensePlate,
+      rating,
+      currentLat: lat,
+      currentLng: lng,
+      heading,
       etaMinutes: 3,
     };
 
+    order.status = 'driver_accepted';
+    order.driver = assignedDriver;
+
     if (global.io) {
-      global.io.emit('order:driver_assigned', { order });
+      global.io.emit('order:driver_assigned', {
+        orderId: order.id,
+        status: 'driver_accepted',
+        driver: assignedDriver,
+        order,
+      });
     }
 
     return res.json({
       success: true,
       message: 'Buyurtma qabul qilindi',
+      order,
+      driver: assignedDriver,
+    });
+  }
+
+  /**
+   * Get single order details
+   * GET /api/v1/orders/:id
+   */
+  static getOrderById(req, res) {
+    const orderId = req.params.id;
+    const order = db.orders.find((o) => o.id === orderId);
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Buyurtma topilmadi' });
+    }
+    return res.json({
+      success: true,
       order,
     });
   }
