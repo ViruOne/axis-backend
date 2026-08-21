@@ -6,6 +6,11 @@ export function setupTaxiSockets(io) {
   io.on('connection', (socket) => {
     console.log(`🔌 [Socket.IO] New client connected: ${socket.id}`);
 
+    // Send active real online drivers immediately to new connecting client
+    socket.emit('drivers:nearby_stream', {
+      drivers: db.drivers.filter((d) => d.isOnline && !d.isBlocked),
+    });
+
     // 1. Client joins a specific room
     socket.on('join_room', (roomName) => {
       socket.join(roomName);
