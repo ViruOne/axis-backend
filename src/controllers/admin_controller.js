@@ -276,4 +276,121 @@ export class AdminController {
       tariff,
     });
   }
+
+  /**
+   * Get all live orders for Dispatcher Monitor
+   * GET /api/v1/admin/orders
+   */
+  static getOrders(req, res) {
+    const { status, search = '' } = req.query;
+    let list = [...db.orders];
+
+    if (status && status !== 'all') {
+      list = list.filter((o) => o.status === status);
+    }
+
+    if (search.trim()) {
+      const q = search.toLowerCase().trim();
+      list = list.filter(
+        (o) =>
+          (o.userName && o.userName.toLowerCase().includes(q)) ||
+          (o.userPhone && o.userPhone.includes(q)) ||
+          (o.pickup && o.pickup.title && o.pickup.title.toLowerCase().includes(q)) ||
+          (o.dropoff && o.dropoff.title && o.dropoff.title.toLowerCase().includes(q)) ||
+          (o.id && o.id.toLowerCase().includes(q))
+      );
+    }
+
+    return res.json({
+      success: true,
+      count: list.length,
+      orders: list,
+    });
+  }
+
+  /**
+   * Manually dispatch / assign an order to a specific driver
+   * POST /api/v1/admin/orders/:id/assign
+   */
+  static assignOrder(req, res) {
+    const orderId = req.params.id;
+    const { driverId } = req.body;
+
+    const order = db.orders.find((o) => o.id === orderId);
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Buyurtma topilmadi' });
+    }
+
+    const driver = db.drivers.find((d) => d.id === driverId);
+    if (!driver) {
+      return res.status(404).json({ success: false, message: 'Haydovchi topilmadi' });
+    }
+
+    order.driver = {
+      id: driver.id,
+      driverId: driver.id,
+      name: driver.name,
+      phone: driver.phone,
+      carModel: driver.carModel,
+      carColor: driver.carColor,
+      licensePlate: driver.licensePlate,
+      rating: driver.rating,
+      lat: driver.currentLat,
+      lng: driver.currentLng,
+      currentLat: driver.currentLat,
+      currentLng: driver.currentLng,
+    };
+    order.status = 'driver_assigned';
+    order.updatedAt = new Date().toISOString();
+
+    if (global.io) {
+      global.io.emit('order:driver_assigned', {
+        orderId: order.id,
+        order,
+        driver: order.driver,
+      });
+      global.io.emit('order:status_updated', {
+        orderId: order.id,
+        status: 'driver_assigned',
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: `Buyurtma haydovchi ${driver.name} ga biriktirildi`,
+      order,
+    });
+  }
+
+  /**
+   * Cancel an order by Admin / Dispatcher
+   * POST /api/v1/admin/orders/:id/cancel
+   */
+  static cancelOrder(req, res) {
+    const orderId = req.params.id;
+    const { reason = 'Dispetcher tomonidan bekor qilindi' } = req.body;
+
+    const order = db.orders.find((o) => o.id === orderId);
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Buyurtma topilmadi' });
+    }
+
+    order.status = 'cancelled';
+    order.cancelReason = reason;
+    order.updatedAt = new Date().toISOString();
+
+    if (global.io) {
+      global.io.emit('order:status_updated', {
+        orderId: order.id,
+        status: 'cancelled',
+        reason,
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Buyurtma bekor qilindi',
+      order,
+    });
+  }
 }

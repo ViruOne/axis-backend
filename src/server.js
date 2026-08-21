@@ -79,7 +79,7 @@ apiRouter.get('/payments/wallet', PaymentController.getWallet);
 apiRouter.post('/payments/topup', PaymentController.topUp);
 apiRouter.post('/payments/cards', PaymentController.addCard);
 
-// Admin & Personal Billing Routes (For Future Standalone Admin App & Management)
+// Admin & Dispatcher Routes
 apiRouter.get('/admin/stats', AdminController.getStats);
 apiRouter.get('/admin/drivers', AdminController.getDrivers);
 apiRouter.post('/admin/drivers/register', AdminController.registerDriver);
@@ -87,6 +87,9 @@ apiRouter.post('/admin/drivers/:id/topup', AdminController.topupDriverBalance);
 apiRouter.post('/admin/drivers/:id/toggle-block', AdminController.toggleBlockDriver);
 apiRouter.get('/admin/transactions', AdminController.getTransactions);
 apiRouter.post('/admin/tariffs/update', AdminController.updateTariff);
+apiRouter.get('/admin/orders', AdminController.getOrders);
+apiRouter.post('/admin/orders/:id/assign', AdminController.assignOrder);
+apiRouter.post('/admin/orders/:id/cancel', AdminController.cancelOrder);
 
 // Register base router
 app.use('/api/v1', apiRouter);
