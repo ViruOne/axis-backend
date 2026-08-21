@@ -67,11 +67,12 @@ export class OrderController {
 
     db.orders.unshift(order);
 
-    // If there is an active socket server, broadcast incoming order to nearby online drivers
+    // If there is an active socket server, broadcast incoming order to nearby online drivers within 5 km
     if (global.io) {
       global.io.emit('order:incoming', {
         order,
         timerSeconds: 30,
+        radiusKm: 5.0,
       });
     }
 
